@@ -7,6 +7,25 @@ import shutil
 from PIL import Image, ExifTags
 
 
+def main() -> None:
+    FILE = pathlib.Path(__file__)
+    PROJECT_DIR = FILE.parent
+    DATA_DIR = PROJECT_DIR / "data"
+
+    OUT_DIR = PROJECT_DIR / "out"
+    shutil.rmtree(OUT_DIR, ignore_errors=True)
+
+    all_files = DATA_DIR.rglob("*")
+
+    for f in all_files:
+        try:
+            p = Photo(source_path=f, destination_dir=OUT_DIR)
+        except Photo.UnableToInitializePhoto:
+            pass
+        else:
+            copy_photo(photo=p)
+
+
 class Photo:
     """
     Representation of a photo for moving to a time based file naming.
@@ -61,23 +80,16 @@ class Photo:
         )
 
 
-def main() -> None:
-    FILE = pathlib.Path(__file__)
-    PROJECT_DIR = FILE.parent
-    DATA_DIR = PROJECT_DIR / "data"
-
-    OUT_DIR = PROJECT_DIR / "out"
-    shutil.rmtree(OUT_DIR, ignore_errors=True)
-
-    all_files = DATA_DIR.rglob("*")
-
-    for f in all_files:
-        try:
-            p = Photo(source_path=f, destination_dir=OUT_DIR)
-        except Photo.UnableToInitializePhoto:
-            pass
-        else:
-            print(p.get_destination_path())
+def copy_photo(photo: Photo) -> None:
+    dest = photo.get_destination_path()
+    print(dest)
+    try:
+        shutil.copy2(
+            photo.path,
+            dest,
+        )
+    except FileNotFoundError:
+        os.makedirs(dest.parent)
 
 
 if __name__ == "__main__":
