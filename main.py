@@ -7,6 +7,10 @@ from PIL import Image, ExifTags
 
 
 class Photo:
+    """
+    Representation of a photo for moving to a time based file naming.
+    """
+
     def __init__(self, path: pathlib.Path) -> None:
         self.path = path
         self.image = Image.open(self.path)
@@ -26,6 +30,10 @@ class Photo:
     def get_timestamp(self) -> str:
         return self.created_at.strftime("%Y%m%d-%H%M%S")
 
+    def get_destination_filename(self) -> str:
+        filename = self.get_timestamp()
+        return filename + self.path.suffix
+
 
 def main() -> None:
     FILE = pathlib.Path(__file__)
@@ -39,12 +47,10 @@ def main() -> None:
     photos.extend(jpg_upper)
 
     for p in photos:
-        print(Photo(path=p).get_timestamp())
+        print(Photo(path=p).get_destination_filename())
 
 
-# ExifTags.Base.DateTime
 # ExifTags.Base.ImageNumber
-# print(datetime.datetime.fromtimestamp(os.stat(p).st_birthtime))
 
 
 if __name__ == "__main__":
