@@ -2,6 +2,7 @@ import argparse
 import datetime
 import os
 import pathlib
+import shutil
 
 from PIL import Image, ExifTags
 
@@ -16,8 +17,9 @@ class Photo:
     class UnableToInitializePhoto(Exception):
         pass
 
-    def __init__(self, path: pathlib.Path) -> None:
-        self.path = path.resolve()
+    def __init__(self, source_path: pathlib.Path, destination_dir: pathlib.Path) -> None:
+        self.path = source_path.resolve()
+        self.destination_dir = destination_dir
 
         if self.path.suffix not in self.ALLOWED_SUFFIXES:
             raise self.__class__.UnableToInitializePhoto(
@@ -34,7 +36,7 @@ class Photo:
                 # 2017:06:24 22:05:42
                 "%Y:%m:%d %H:%M:%S",
             )
-        elif created_timestamp := os.stat(path).st_birthtime:
+        elif created_timestamp := os.stat(self.path).st_birthtime:
             # This is the initial file creation time on macOS
             self.created_at = datetime.datetime.fromtimestamp(created_timestamp)
 
@@ -42,8 +44,21 @@ class Photo:
         return self.created_at.strftime("%Y%m%d-%H%M%S")
 
     def get_destination_filename(self) -> str:
-        filename = self.get_timestamp()
-        return filename + self.path.suffix
+        return self.get_timestamp() + self.path.suffix
+
+    def get_year(self) -> str:
+        return self.created_at.strftime("%Y")
+
+    def get_month(self) -> str:
+        return self.created_at.strftime("%m")
+
+    def get_destination_path(self) -> pathlib.Path:
+        return (
+            self.destination_dir
+            / self.get_year()
+            / self.get_month()
+            / self.get_destination_filename()
+        )
 
 
 def main() -> None:
@@ -51,15 +66,18 @@ def main() -> None:
     PROJECT_DIR = FILE.parent
     DATA_DIR = PROJECT_DIR / "data"
 
+    OUT_DIR = PROJECT_DIR / "out"
+    shutil.rmtree(OUT_DIR, ignore_errors=True)
+
     all_files = DATA_DIR.rglob("*")
 
     for f in all_files:
         try:
-            print(Photo(path=f).get_destination_filename())
+            p = Photo(source_path=f, destination_dir=OUT_DIR)
         except Photo.UnableToInitializePhoto:
             pass
-
-    # ExifTags.Base.ImageNumber
+        else:
+            print(p.get_destination_path())
 
 
 if __name__ == "__main__":
