@@ -64,10 +64,15 @@ class Photo:
     def get_timestamp(self) -> str:
         return self.created_at.strftime("%Y%m%d-%H%M%S")
 
-    def get_destination_filename(self, extra: str = "") -> str:
+    def get_destination_filename(self, include_original: bool = False, extra: str = "") -> str:
         filename = self.get_timestamp()
+
+        if include_original:
+            filename = f"{filename}-{self.path.stem}"
+
         if extra:
             filename = f"{filename}-{extra}"
+
         return filename + self.path.suffix
 
     def get_year(self) -> str:
@@ -76,20 +81,26 @@ class Photo:
     def get_month(self) -> str:
         return self.created_at.strftime("%m")
 
-    def get_destination_path(self, extra: str = "") -> pathlib.Path:
-        return (
+    def get_destination_path(self) -> pathlib.Path:
+        destination_dir = (
             self.destination_dir
             / self.get_year()
             / self.get_month()
-            / self.get_destination_filename(extra=extra)
         )
+        destination_file = destination_dir / self.get_destination_filename()
+
+        while destination_file.exists():
+            filename = self.get_destination_filename(
+                extra=get_random_string(),
+                include_original=True,
+            )
+            destination_file = destination_dir / filename
+
+        return destination_file
 
 
 def copy_photo(photo: Photo) -> None:
     dest = photo.get_destination_path()
-
-    while dest.exists():
-        dest = photo.get_destination_path(extra=get_random_string())
 
     print(dest)
 
