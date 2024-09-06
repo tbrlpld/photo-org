@@ -2,7 +2,9 @@ import argparse
 import datetime
 import os
 import pathlib
+import random
 import shutil
+import string
 
 from PIL import Image, ExifTags
 
@@ -62,8 +64,11 @@ class Photo:
     def get_timestamp(self) -> str:
         return self.created_at.strftime("%Y%m%d-%H%M%S")
 
-    def get_destination_filename(self) -> str:
-        return self.get_timestamp() + self.path.suffix
+    def get_destination_filename(self, extra: str = "") -> str:
+        filename = self.get_timestamp()
+        if extra:
+            filename = f"{filename}-{extra}"
+        return filename + self.path.suffix
 
     def get_year(self) -> str:
         return self.created_at.strftime("%Y")
@@ -71,18 +76,23 @@ class Photo:
     def get_month(self) -> str:
         return self.created_at.strftime("%m")
 
-    def get_destination_path(self) -> pathlib.Path:
+    def get_destination_path(self, extra: str = "") -> pathlib.Path:
         return (
             self.destination_dir
             / self.get_year()
             / self.get_month()
-            / self.get_destination_filename()
+            / self.get_destination_filename(extra=extra)
         )
 
 
 def copy_photo(photo: Photo) -> None:
     dest = photo.get_destination_path()
+
+    while dest.exists():
+        dest = photo.get_destination_path(extra=get_random_string())
+
     print(dest)
+
     try:
         shutil.copy2(
             photo.path,
@@ -90,6 +100,12 @@ def copy_photo(photo: Photo) -> None:
         )
     except FileNotFoundError:
         os.makedirs(dest.parent)
+
+
+def get_random_string() -> str:
+    letters_and_digits = string.ascii_lowercase + string.digits
+    random_chars = random.choices(letters_and_digits, k=6)
+    return "".join(random_chars)
 
 
 if __name__ == "__main__":
