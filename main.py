@@ -15,7 +15,7 @@ def main() -> None:
     DATA_DIR = PROJECT_DIR / "data"
 
     OUT_DIR = PROJECT_DIR / "out"
-    shutil.rmtree(OUT_DIR, ignore_errors=True)
+    # shutil.rmtree(OUT_DIR, ignore_errors=True)
 
     all_files = DATA_DIR.rglob("*")
 
@@ -117,7 +117,13 @@ class Photo:
 def copy_photo(photo: Photo) -> None:
     dest = photo.get_destination_path()
 
-    print(dest)
+    # Handle duplicates on copy. Even though we avoid clashes in the same script run
+    # already, there still could be a file with the same name from a different run.
+    # To handle that, we want a random bit in the filename.
+    if dest.exists():
+        # TODO: Change this to only include a random part.
+        photo.include_original_filename = True
+        dest = photo.get_destination_path()
 
     try:
         shutil.copy2(
