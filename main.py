@@ -28,14 +28,29 @@ def main() -> None:
 
         dest = p.get_destination_path()
         if dest in photos:
+            # Update the filenames to include the original filename. This will help in
+            # cases where the original filename had some sensible content to
+            # differentiate the images (e.g. a sequence number).
+
             # Update the existing entry to include original filename.
             existing = photos[dest]
             del photos[dest]
             existing.include_original_filename = True
-            photos[existing.get_destination_path()] = existing
+            existing_dest = existing.get_destination_path()
 
             # And for the current one, do that too.
             p.include_original_filename = True
+            dest = p.get_destination_path()
+
+            # If the filenames are still the same, also include random bits
+            if existing_dest == dest:
+                existing.randomize_destination_filename = True
+                existing_dest = existing.get_destination_path()
+
+                p.randomize_destination_filename = True
+                dest = p.get_destination_path()
+
+            photos[existing_dest] = existing
 
         photos[dest] = p
 
@@ -58,6 +73,7 @@ class Photo:
         self.destination_dir = destination_dir
 
         self.include_original_filename = False
+        self.randomize_destination_filename = False
 
         if self.path.suffix not in self.ALLOWED_SUFFIXES:
             raise self.__class__.UnableToInitializePhoto(
@@ -86,9 +102,8 @@ class Photo:
 
         if self.include_original_filename:
             filename = f"{filename}-{self.path.stem}"
-            # Also adding a random extension in case photos that have not been in the
-            # same directory before still have a clash with the original filenames
-            # included.
+
+        if self.randomize_destination_filename:
             filename = f"{filename}-{get_random_string()}"
 
         return filename + self.path.suffix
@@ -121,8 +136,7 @@ def copy_photo(photo: Photo) -> None:
     # already, there still could be a file with the same name from a different run.
     # To handle that, we want a random bit in the filename.
     if dest.exists():
-        # TODO: Change this to only include a random part.
-        photo.include_original_filename = True
+        photo.randomize_destination_filename = True
         dest = photo.get_destination_path()
 
     try:
