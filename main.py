@@ -19,13 +19,28 @@ def main() -> None:
 
     all_files = DATA_DIR.rglob("*")
 
+    photos = {}
     for f in all_files:
         try:
             p = Photo(source_path=f, destination_dir=OUT_DIR)
         except Photo.UnableToInitializePhoto:
-            pass
-        else:
-            copy_photo(photo=p)
+            continue
+
+        dest = p.get_destination_path()
+        if dest in photos:
+            # Update the existing entry to include original filename.
+            existing = photos[dest]
+            del photos[dest]
+            existing.include_original_filename = True
+            photos[existing.get_destination_path()] = existing
+
+            # And for the current one, do that too.
+            p.include_original_filename = True
+
+        photos[dest] = p
+
+    for photo in photos.values():
+        copy_photo(photo=photo)
 
 
 class Photo:
@@ -41,6 +56,8 @@ class Photo:
     def __init__(self, source_path: pathlib.Path, destination_dir: pathlib.Path) -> None:
         self.path = source_path.resolve()
         self.destination_dir = destination_dir
+
+        self.include_original_filename = False
 
         if self.path.suffix not in self.ALLOWED_SUFFIXES:
             raise self.__class__.UnableToInitializePhoto(
@@ -64,14 +81,15 @@ class Photo:
     def get_timestamp(self) -> str:
         return self.created_at.strftime("%Y%m%d-%H%M%S")
 
-    def get_destination_filename(self, include_original: bool = False, extra: str = "") -> str:
+    def get_destination_filename(self) -> str:
         filename = self.get_timestamp()
 
-        if include_original:
+        if self.include_original_filename:
             filename = f"{filename}-{self.path.stem}"
-
-        if extra:
-            filename = f"{filename}-{extra}"
+            # Also adding a random extension in case photos that have not been in the
+            # same directory before still have a clash with the original filenames
+            # included.
+            filename = f"{filename}-{get_random_string()}"
 
         return filename + self.path.suffix
 
@@ -81,21 +99,18 @@ class Photo:
     def get_month(self) -> str:
         return self.created_at.strftime("%m")
 
-    def get_destination_path(self) -> pathlib.Path:
+    def get_destination_path(self, include_original: bool = False) -> pathlib.Path:
         destination_dir = (
             self.destination_dir
             / self.get_year()
             / self.get_month()
         )
-        destination_file = destination_dir / self.get_destination_filename()
 
-        while destination_file.exists():
-            filename = self.get_destination_filename(
-                extra=get_random_string(),
-                include_original=True,
-            )
-            destination_file = destination_dir / filename
+        filename = self.get_destination_filename()
+        if include_original:
+            filename = self.get_destination_filename(include_original=True)
 
+        destination_file = destination_dir / filename
         return destination_file
 
 
